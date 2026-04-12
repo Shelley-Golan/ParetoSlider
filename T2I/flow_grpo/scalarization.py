@@ -10,10 +10,6 @@ The factory ``make_scalarizer(config)`` reads config attributes and returns a
 import functools
 import torch
 
-# Near-zero threshold for weight masking.  Consistent with the 1e-8 clamp in
-# _apply_mask and the log-clamp in ew().  Anything below this is treated as
-# "objective disabled" to prevent near-zero weights from leaking into
-# logsumexp or log(w) computations.
 _ZERO_TOL = 1e-7
 
 
