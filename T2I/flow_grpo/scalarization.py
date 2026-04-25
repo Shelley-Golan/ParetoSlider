@@ -35,3 +35,19 @@ def linear(pref, losses, active_mask=None):
     w = _apply_mask(pref, active_mask)
     return (w * losses).sum(dim=1)
 
+
+_SCALARIZERS = {
+    "linear": linear,
+}
+
+
+def make_scalarizer(config):
+    """Factory: read ``config.scalarization`` and return a bound callable."""
+    name = getattr(config, "scalarization", "linear")
+    fn = _SCALARIZERS.get(name)
+    if fn is None:
+        raise ValueError(
+            f"Unknown scalarization={name!r}. Available: {sorted(_SCALARIZERS)}"
+        )
+    return fn
+

@@ -97,8 +97,6 @@ def get_config():
     config.loss_mode = "single_loss"
     # K preferences per prompt; >1 enables (prompt, pref_slot) sub-group GDPO
     config.num_pref_per_prompt = 1
-    # ScalarGate init value for pref_gate (temb injection gating).
-    # 0 = gate starts closed (old behavior), 1e-3 = small nonzero init (recommended).
     config.pref_gate_init = 1e-3
 
     ###### Prompt Function ######

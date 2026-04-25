@@ -37,11 +37,6 @@ from flow_grpo.scalarization import make_scalarizer
 from flow_grpo.diffusers_patch.pipeline_with_logprob import pipeline_with_logprob
 from flow_grpo.rewards import expand_reward_fn_to_objectives
 from flow_grpo.diffusers_patch.transformer_sd3 import SD3Transformer2DModelWithConditioning, get_modules_to_save
-from flow_grpo.diffusers_patch.transformer_ablations import (
-    ABLATION_MODES as _ABLATION_MODES,
-    SD3AblationTransformer,
-    get_ablation_modules_to_save,
-)
 from flow_grpo.diffusers_patch.train_dreambooth_lora_sd3 import encode_prompt
 import torch
 import torch.distributed as dist
@@ -540,17 +535,14 @@ def save_ckpt(
                 "pretrained_model": getattr(config.pretrained, "model", None),
                 "use_lora": bool(getattr(config, "use_lora", False)),
                 "reward_fn_keys": list(getattr(config, "reward_fn", {}).keys()),
-                "conditioning_mode": getattr(config, "conditioning_mode", "hybrid"),
+                "conditioning_mode": getattr(config, "conditioning_mode", "temb_blk_shared"),
                 "pref_dim": len(expand_reward_fn_to_objectives(config.reward_fn)),
                 "objective_names": [name for name, _ in expand_reward_fn_to_objectives(config.reward_fn)],
             }
-            # Save ablation-specific params for eval loading
-            _cm = meta["conditioning_mode"]
-            if _cm in _ABLATION_MODES:
-                meta["block_mod_form"] = getattr(config, "block_mod_form", "affine")
-                meta["use_pooled_text"] = bool(getattr(config, "use_pooled_text", False))
-                meta["num_freqs"] = int(getattr(config, "num_freqs", 64))
-                meta["mod_block_fraction"] = float(getattr(config, "mod_block_fraction", 0.667))
+            meta["block_mod_form"] = getattr(config, "block_mod_form", "residual")
+            meta["use_pooled_text"] = bool(getattr(config, "use_pooled_text", False))
+            meta["num_freqs"] = int(getattr(config, "num_freqs", 1))
+            meta["mod_block_fraction"] = float(getattr(config, "mod_block_fraction", 1.0))
             # Attempt to infer a representative hidden size (best-effort).
             for k, v in model_to_save.state_dict().items():
                 if k.endswith("attn.to_q.weight") and hasattr(v, "shape") and len(v.shape) == 2:
@@ -646,25 +638,15 @@ def main(_):
     expanded_objectives_for_pref = expand_reward_fn_to_objectives(config.reward_fn)
     pref_dim = getattr(config, 'pref_dim_override', None) or len(expanded_objectives_for_pref)
     
-    conditioning_mode = getattr(config, "conditioning_mode", "hybrid")
-    if conditioning_mode in _ABLATION_MODES:
-        cond_transformer = SD3AblationTransformer(
-            **base_config_dict,
-            pref_dim=pref_dim,
-            pref_gate_init=getattr(config, 'pref_gate_init', 1e-3),
-            conditioning_mode=conditioning_mode,
-            block_mod_form=getattr(config, 'block_mod_form', 'affine'),
-            use_pooled_text=getattr(config, 'use_pooled_text', False),
-            num_freqs=getattr(config, 'num_freqs', 64),
-            mod_block_fraction=getattr(config, 'mod_block_fraction', 0.667),
-        )
-    else:
-        cond_transformer = SD3Transformer2DModelWithConditioning(
-            **base_config_dict,
-            pref_dim=pref_dim,  # Length = number of reward objectives (may be expanded for multi-output scorers)
-            pref_gate_init=getattr(config, 'pref_gate_init', 1e-3),
-            conditioning_mode=conditioning_mode,
-        )
+    cond_transformer = SD3Transformer2DModelWithConditioning(
+        **base_config_dict,
+        pref_dim=pref_dim,
+        pref_gate_init=getattr(config, 'pref_gate_init', 1e-3),
+        block_mod_form=getattr(config, 'block_mod_form', 'residual'),
+        use_pooled_text=getattr(config, 'use_pooled_text', False),
+        num_freqs=getattr(config, 'num_freqs', 1),
+        mod_block_fraction=getattr(config, 'mod_block_fraction', 1.0),
+    )
 
     # load original weights; preference modules will be missing and that's fine
     missing, unexpected = cond_transformer.load_state_dict(base_transformer.state_dict(), strict=False)
@@ -696,10 +678,7 @@ def main(_):
         ]
         lora_rank = getattr(config.train, "lora_rank", 32)
         lora_alpha = getattr(config.train, "lora_alpha", lora_rank * 2)
-        if conditioning_mode in _ABLATION_MODES:
-            modules_to_save = get_ablation_modules_to_save(conditioning_mode)
-        else:
-            modules_to_save = get_modules_to_save(conditioning_mode)
+        modules_to_save = get_modules_to_save()
         transformer_lora_config = LoraConfig(
             r=lora_rank,
             lora_alpha=lora_alpha,

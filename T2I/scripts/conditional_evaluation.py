@@ -35,10 +35,6 @@ if _PROJECT_ROOT not in sys.path:
 
 from flow_grpo.rewards import multi_score
 from flow_grpo.diffusers_patch.transformer_sd3 import SD3Transformer2DModelWithConditioning
-from flow_grpo.diffusers_patch.transformer_ablations import (
-    ABLATION_MODES as _ABLATION_MODES,
-    SD3AblationTransformer,
-)
 from flow_grpo.diffusers_patch.pipeline_with_logprob import pipeline_with_logprob
 from flow_grpo.diffusers_patch.train_dreambooth_lora_sd3 import encode_prompt
 
@@ -199,26 +195,16 @@ def main(args):
     for key in ["_class_name", "_diffusers_version", "_name_or_path"]:
         base_config_dict.pop(key, None)
 
-    if conditioning_mode in _ABLATION_MODES:
-        if is_main_process(rank):
-            print(f"Creating SD3AblationTransformer (pref_dim={pref_dim}, mode={conditioning_mode})")
-        cond_transformer = SD3AblationTransformer(
-            **base_config_dict,
-            pref_dim=pref_dim,
-            conditioning_mode=conditioning_mode,
-            block_mod_form=block_mod_form,
-            use_pooled_text=use_pooled_text,
-            num_freqs=num_freqs,
-            mod_block_fraction=mod_block_fraction,
-        )
-    else:
-        if is_main_process(rank):
-            print(f"Creating SD3Transformer2DModelWithConditioning (pref_dim={pref_dim}, mode={conditioning_mode})")
-        cond_transformer = SD3Transformer2DModelWithConditioning(
-            **base_config_dict,
-            pref_dim=pref_dim,
-            conditioning_mode=conditioning_mode,
-        )
+    if is_main_process(rank):
+        print(f"Creating SD3Transformer2DModelWithConditioning (pref_dim={pref_dim})")
+    cond_transformer = SD3Transformer2DModelWithConditioning(
+        **base_config_dict,
+        pref_dim=pref_dim,
+        block_mod_form=block_mod_form,
+        use_pooled_text=use_pooled_text,
+        num_freqs=num_freqs,
+        mod_block_fraction=mod_block_fraction,
+    )
 
     # Load base SD3 weights (pref modules will be missing — expected)
     base_missing, _ = cond_transformer.load_state_dict(pipeline.transformer.state_dict(), strict=False)
@@ -542,10 +528,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_weights", type=int, default=5,
                         help="Number of uniformly-spaced preference weight points")
     parser.add_argument("--conditioning_mode", type=str, default="temb_blk_shared",
-                        choices=["hybrid", "adaln_both",
-                                 "temb_only", "output_only", "temb_gated_output",
-                                 "temb_blk_shared", "temb_blk_stage", "temb_blk_per"],
-                        help="Conditioning mode (overridden by checkpoint metadata if available)")
+                        help="Conditioning mode (kept for metadata compatibility)")
     parser.add_argument("--block_mod_form", type=str, default="residual",
                         choices=["affine", "scale_only", "shift_only", "residual"],
                         help="Block modulation form (ablation modes only)")

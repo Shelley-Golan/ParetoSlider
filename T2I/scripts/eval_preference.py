@@ -33,10 +33,6 @@ if _PROJECT_ROOT not in sys.path:
 
 from flow_grpo.rewards import multi_score, MULTI_OUTPUT_SCORERS
 from flow_grpo.diffusers_patch.transformer_sd3 import SD3Transformer2DModelWithConditioning
-from flow_grpo.diffusers_patch.transformer_ablations import (
-    ABLATION_MODES as _ABLATION_MODES,
-    SD3AblationTransformer,
-)
 from flow_grpo.diffusers_patch.pipeline_with_logprob import pipeline_with_logprob
 from flow_grpo.diffusers_patch.train_dreambooth_lora_sd3 import encode_prompt
 
@@ -690,8 +686,8 @@ def plot_pairwise_pareto_fronts(results_path, output_dir, objective_names):
     print(f"Pairwise Pareto plots saved to: {plots_dir}/")
 
 
-def load_model(checkpoint_path, base_model, device="cuda", mixed_precision="bf16", num_objectives=2, conditioning_mode="hybrid",
-               block_mod_form="affine", use_pooled_text=False, num_freqs=64, mod_block_fraction=0.667):
+def load_model(checkpoint_path, base_model, device="cuda", mixed_precision="bf16", num_objectives=2, conditioning_mode="temb_blk_shared",
+               block_mod_form="residual", use_pooled_text=False, num_freqs=1, mod_block_fraction=1.0):
     """Load the preference-conditioned model from checkpoint.
 
     Supports PEFT LoRA checkpoints with pref_mlp and pref_adaln saved via modules_to_save.
@@ -731,10 +727,9 @@ def load_model(checkpoint_path, base_model, device="cuda", mixed_precision="bf16
         pref_dim = int(meta.get("pref_dim", pref_dim))
         saved_mode = meta.get("conditioning_mode")
         if saved_mode and saved_mode != conditioning_mode:
-            print(f"  WARNING: checkpoint was trained with conditioning_mode='{saved_mode}' "
-                  f"but CLI says '{conditioning_mode}'. Using checkpoint value '{saved_mode}'.")
+            print(f"  NOTE: checkpoint metadata has conditioning_mode='{saved_mode}' "
+                  f"(CLI had '{conditioning_mode}')")
             conditioning_mode = saved_mode
-        # Read ablation-specific params from metadata (override CLI defaults)
         if "block_mod_form" in meta:
             block_mod_form = meta["block_mod_form"]
         if "use_pooled_text" in meta:
@@ -759,24 +754,15 @@ def load_model(checkpoint_path, base_model, device="cuda", mixed_precision="bf16
         if LoraConfig is None or get_peft_model is None:
             raise ImportError("peft is not installed but checkpoint is a PEFT adapter")
 
-        if conditioning_mode in _ABLATION_MODES:
-            print(f"Creating SD3AblationTransformer (pref_dim={pref_dim}, mode={conditioning_mode})")
-            transformer = SD3AblationTransformer(
-                **base_config_dict,
-                pref_dim=pref_dim,
-                conditioning_mode=conditioning_mode,
-                block_mod_form=block_mod_form,
-                use_pooled_text=use_pooled_text,
-                num_freqs=num_freqs,
-                mod_block_fraction=mod_block_fraction,
-            )
-        else:
-            print(f"Creating SD3Transformer2DModelWithConditioning (pref_dim={pref_dim}, mode={conditioning_mode})")
-            transformer = SD3Transformer2DModelWithConditioning(
-                **base_config_dict,
-                pref_dim=pref_dim,
-                conditioning_mode=conditioning_mode,
-            )
+        print(f"Creating SD3Transformer2DModelWithConditioning (pref_dim={pref_dim})")
+        transformer = SD3Transformer2DModelWithConditioning(
+            **base_config_dict,
+            pref_dim=pref_dim,
+            block_mod_form=block_mod_form,
+            use_pooled_text=use_pooled_text,
+            num_freqs=num_freqs,
+            mod_block_fraction=mod_block_fraction,
+        )
 
         # Load base SD3 transformer weights
         print("Loading base SD3 transformer weights...")
@@ -790,28 +776,17 @@ def load_model(checkpoint_path, base_model, device="cuda", mixed_precision="bf16
         transformer = PeftModel.from_pretrained(transformer, lora_path, is_trainable=False)
         transformer.set_adapter("default")
 
-        # Loading verified — modules_to_save.default matches checkpoint values.
-
     else:
         # ----- Diffusers save_pretrained path (legacy) -----
-        if conditioning_mode in _ABLATION_MODES:
-            print(f"Creating SD3AblationTransformer (pref_dim={pref_dim}, mode={conditioning_mode})")
-            transformer = SD3AblationTransformer(
-                **base_config_dict,
-                pref_dim=pref_dim,
-                conditioning_mode=conditioning_mode,
-                block_mod_form=block_mod_form,
-                use_pooled_text=use_pooled_text,
-                num_freqs=num_freqs,
-                mod_block_fraction=mod_block_fraction,
-            )
-        else:
-            print(f"Creating SD3Transformer2DModelWithConditioning (pref_dim={pref_dim}, mode={conditioning_mode})")
-            transformer = SD3Transformer2DModelWithConditioning(
-                **base_config_dict,
-                pref_dim=pref_dim,
-                conditioning_mode=conditioning_mode,
-            )
+        print(f"Creating SD3Transformer2DModelWithConditioning (pref_dim={pref_dim})")
+        transformer = SD3Transformer2DModelWithConditioning(
+            **base_config_dict,
+            pref_dim=pref_dim,
+            block_mod_form=block_mod_form,
+            use_pooled_text=use_pooled_text,
+            num_freqs=num_freqs,
+            mod_block_fraction=mod_block_fraction,
+        )
 
         # Load base SD3 transformer weights
         print("Loading base SD3 transformer weights...")
@@ -842,10 +817,8 @@ def load_model(checkpoint_path, base_model, device="cuda", mixed_precision="bf16
     if hasattr(transformer, "base_model") and hasattr(transformer.base_model, "model"):
         cls_name = type(transformer.base_model.model).__name__
     print(f"\n>>> Eval transformer class: {cls_name}")
-    print(f">>> conditioning_mode: {conditioning_mode}")
-    if conditioning_mode in _ABLATION_MODES:
-        print(f">>> block_mod_form={block_mod_form}, use_pooled_text={use_pooled_text}, "
-              f"num_freqs={num_freqs}, mod_block_fraction={mod_block_fraction}")
+    print(f">>> block_mod_form={block_mod_form}, use_pooled_text={use_pooled_text}, "
+          f"num_freqs={num_freqs}, mod_block_fraction={mod_block_fraction}")
     print()
 
     # Move other components to device
@@ -1130,10 +1103,7 @@ def main():
                              "(default: only interior + vertex points)")
     parser.add_argument("--plot_pairwise", action="store_true",
                         help="Generate pairwise 2D Pareto plots for all objective pairs (useful for >2 objectives)")
-    parser.add_argument("--conditioning_mode", type=str, default="hybrid",
-                        choices=["hybrid", "adaln_both",
-                                 "temb_only", "output_only", "temb_gated_output",
-                                 "temb_blk_shared", "temb_blk_stage", "temb_blk_per"],
+    parser.add_argument("--conditioning_mode", type=str, default="temb_blk_shared",
                         help="Conditioning mode used during training (must match checkpoint)")
     parser.add_argument("--block_mod_form", type=str, default="affine",
                         choices=["affine", "scale_only", "shift_only", "residual"],

@@ -93,7 +93,6 @@ def _sd3_style_config(style_key, style_short_name):
     config.train.beta = 0.0001
     config.loss_mode = "per_objective"
     config.num_pref_per_prompt = 3
-    config.conditioning_mode = "temb_blk_shared"
     config.block_mod_form = "residual"
     config.mod_block_fraction = 1.0
     config.num_epochs = 31
@@ -105,63 +104,6 @@ def _sd3_style_config(style_key, style_short_name):
 
 def sd3_qwen_style_sketch():
     return _sd3_style_config("qwen_style_sketch", "qwen_sketch")
-
-
-def sd3_qwen_sketch_photorealism_stch():
-    """2 objectives with smooth Tchebycheff scalarization."""
-    reward_fn = {
-        "pickscore_photorealism": 1.0,
-        "qwen_style_sketch": 1.0,
-    }
-    config = _get_config(
-        base_model="sd3",
-        n_gpus=6,
-        gradient_step_per_epoch=1,
-        dataset="pickscore",
-        reward_fn=reward_fn,
-        name="qwen_sketch_photorealism_init51_shared_stch",
-    )
-    config.sample.num_steps = 25
-    config.beta = 0.1
-    config.train.beta = 0.001
-    config.loss_mode = "per_objective"
-    config.num_pref_per_prompt = 3
-    config.conditioning_mode = "temb_blk_shared"
-    config.scalarization = "stch"
-    config.block_mod_form = "residual"
-    config.mod_block_fraction = 1.0
-    config.num_epochs = 31
-    config.num_freqs = 1
-    config.train.lora_rank = 32
-    config.train.lora_path = os.environ.get("NFT_LORA_PATH", None)
-    return config
-
-
-def sd3_qwen_sketch_photorealism_hybrid():
-    """2 objectives with hybrid conditioning mode."""
-    reward_fn = {
-        "pickscore_photorealism": 1.0,
-        "qwen_style_sketch": 1.0,
-    }
-    config = _get_config(
-        base_model="sd3",
-        n_gpus=6,
-        gradient_step_per_epoch=1,
-        dataset="pickscore",
-        reward_fn=reward_fn,
-        name="qwen_sketch_photorealism_init51_hybrid",
-    )
-    config.sample.num_steps = 25
-    config.beta = 0.1
-    config.train.beta = 0.001
-    config.loss_mode = "per_objective"
-    config.num_pref_per_prompt = 3
-    config.conditioning_mode = "hybrid"
-    config.num_epochs = 31
-    config.num_freqs = 1
-    config.train.lora_rank = 32
-    config.train.lora_path = os.environ.get("NFT_LORA_PATH", None)
-    return config
 
 
 def sd3_qwen_sketch_photorealism_single_loss():
@@ -183,7 +125,6 @@ def sd3_qwen_sketch_photorealism_single_loss():
     config.train.beta = 0.01
     config.loss_mode = "single_loss"
     config.num_pref_per_prompt = 3
-    config.conditioning_mode = "temb_blk_shared"
     config.block_mod_form = "residual"
     config.mod_block_fraction = 1.0
     config.num_epochs = 31
