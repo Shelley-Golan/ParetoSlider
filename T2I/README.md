@@ -254,6 +254,10 @@ Or set it as an environment override when launching.
 
 Apache License 2.0 — see [LICENSE](LICENSE).
 
+## Acknowledgements
+
+We thank [DiffusionNFT](https://github.com/NVlabs/DiffusionNFT) for their awesome code.
+
 ## Citation
 
 ```bibtex

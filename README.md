@@ -74,6 +74,10 @@ ParetoSlider/
 
 Apache License 2.0 — see [T2I/LICENSE](T2I/LICENSE).
 
+## Acknowledgements
+
+We thank [DiffusionNFT](https://github.com/NVlabs/DiffusionNFT) for their awesome code.
+
 ## Citation
 
 ```bibtex
