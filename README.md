@@ -8,12 +8,6 @@
 
 ParetoSlider trains a **single diffusion model** that learns an entire **Pareto front** across multiple competing objectives — for example, photorealism vs. artistic sketch style. Instead of committing to one fixed trade-off, the model accepts a **preference vector** at inference time, letting users smoothly slide between objectives with no retraining.
 
-## TODO
-
-- [x] T2I code release
-- [ ] I2I coming soon
-- [ ] T2V coming soon
-
 ---
 
 ## Key Ideas
@@ -75,6 +69,12 @@ ParetoSlider/
 - 4+ GPUs (tested with 4–6 NVIDIA GPUs)
 - HuggingFace `diffusers`, `transformers`, `peft`
 - Weights & Biases for logging
+
+## TODO
+
+- [x] T2I code release
+- [ ] I2I coming soon
+- [ ] T2V coming soon
 
 ## License
 
