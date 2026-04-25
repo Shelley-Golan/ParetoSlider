@@ -1,6 +1,4 @@
-<h1 align="center">ParetoSlider</h1>
-
-<h3 align="center">Preference-Conditioned Pareto-Set Learning for Multi-Objective Text-to-Image Generation</h3>
+<h1 align="center">ParetoSlider: Diffusion Models Post-Training for Continuous Reward Control</h1>
 
 <p align="center">
   <img src="assets/teaser.png" alt="ParetoSlider Teaser" width="100%">
