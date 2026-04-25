@@ -60,11 +60,13 @@ pip install -e .
 
 The following HuggingFace models are downloaded automatically:
 
-| Model | Purpose |
-|-------|---------|
-| `stabilityai/stable-diffusion-3.5-medium` | Base diffusion model |
-| `yuvalkirstain/PickScore_v1` | Photorealism reward scorer |
-| `laion/CLIP-ViT-H-14-laion2B-s32B-b79K` | CLIP processor for PickScore |
+
+| Model                                     | Purpose                      |
+| ----------------------------------------- | ---------------------------- |
+| `stabilityai/stable-diffusion-3.5-medium` | Base diffusion model         |
+| `yuvalkirstain/PickScore_v1`              | Photorealism reward scorer   |
+| `laion/CLIP-ViT-H-14-laion2B-s32B-b79K`   | CLIP processor for PickScore |
+
 
 ## Conditional Training
 
@@ -82,15 +84,16 @@ The preference vector is injected into the SD3 transformer via two learnable con
 The single supported conditioning mode uses two injection paths:
 
 1. **Temb injection** — A small MLP projects the preference vector and adds it to the time/text embedding. Near-identity at init via small std on the last linear layer.
-
 2. **Shared block modulation** — A `SliderProjector` (sinusoidal PE of the preference vector, optionally concatenated with pooled text embeddings, fed through a 4-layer MLP) produces a single modulation vector shared across all active transformer blocks. Each block is wrapped in an `ImageOnlyModulationBlock` that applies the modulation to the image stream only (never the text stream). The `block_mod_form` parameter controls how modulation is applied:
 
-| `block_mod_form` | Description |
-|-------------------|-------------|
+
+| `block_mod_form`     | Description                                                         |
+| -------------------- | ------------------------------------------------------------------- |
 | `residual` (default) | Residual injection after FF, gated by the block's native `gate_mlp` |
-| `affine` | Adds to both scale and shift in AdaLN (mod dim = inner_dim * 2) |
-| `scale_only` | Adds to scale only |
-| `shift_only` | Adds to shift only |
+| `affine`             | Adds to both scale and shift in AdaLN (mod dim = inner_dim * 2)     |
+| `scale_only`         | Adds to scale only                                                  |
+| `shift_only`         | Adds to shift only                                                  |
+
 
 ### Quick Start
 
@@ -124,40 +127,46 @@ torchrun --nproc_per_node=4 scripts/train_pareto_nft_sd3.py \
 
 The `--config` flag takes the form `config/nft.py:<function_name>` where available presets are:
 
-| Preset Function | Objectives | Loss Mode | GPUs |
-|----------------|------------|-----------|------|
-| `sd3_qwen_style_sketch` | photorealism + sketch | `per_objective` | 4 |
-| `sd3_qwen_sketch_photorealism_single_loss` | photorealism + sketch | `single_loss` | 6 |
-| `sd3_1_pickscore_photorealism_0_qwen_style_sketch` | photorealism only (baseline) | — | 6 |
+
+| Preset Function                                    | Objectives                   | Loss Mode       | GPUs |
+| -------------------------------------------------- | ---------------------------- | --------------- | ---- |
+| `sd3_qwen_style_sketch`                            | photorealism + sketch        | `per_objective` | 4    |
+| `sd3_qwen_sketch_photorealism_single_loss`         | photorealism + sketch        | `single_loss`   | 6    |
+| `sd3_1_pickscore_photorealism_0_qwen_style_sketch` | photorealism only (baseline) | —               | 6    |
+
 
 #### 3. Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `NFT_LOGDIR` | `./logs` | Root directory for checkpoints and logs |
-| `NFT_LORA_PATH` | `None` | Path to a pretrained LoRA checkpoint to initialize from |
-| `QWEN_VL_REWARD_URL` | `http://127.0.0.1:12341` | Qwen-VL reward server URL |
-| `QWEN_VL_REWARD_TIMEOUT` | `1800` | HTTP timeout (seconds) for reward server requests |
-| `MASTER_ADDR` | `localhost` | Distributed training master address |
-| `MASTER_PORT` | `12355` | Distributed training master port |
+
+| Variable                 | Default                  | Description                                             |
+| ------------------------ | ------------------------ | ------------------------------------------------------- |
+| `NFT_LOGDIR`             | `./logs`                 | Root directory for checkpoints and logs                 |
+| `NFT_LORA_PATH`          | `None`                   | Path to a pretrained LoRA checkpoint to initialize from |
+| `QWEN_VL_REWARD_URL`     | `http://127.0.0.1:12341` | Qwen-VL reward server URL                               |
+| `QWEN_VL_REWARD_TIMEOUT` | `1800`                   | HTTP timeout (seconds) for reward server requests       |
+| `MASTER_ADDR`            | `localhost`              | Distributed training master address                     |
+| `MASTER_PORT`            | `12355`                  | Distributed training master port                        |
+
 
 ### Key Configuration Fields
 
 These can be overridden in a custom config function (see `config/nft.py` for examples):
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `config.loss_mode` | `str` | `"per_objective"` (recommended) or `"single_loss"` |
-| `config.num_pref_per_prompt` | `int` | K distinct preference slots per prompt per batch (default: 1; use 3 for Pareto training) |
-| `config.reward_fn` | `dict` | Maps reward function names to weights, e.g. `{"pickscore_photorealism": 1.0, "qwen_style_sketch": 1.0}` |
-| `config.block_mod_form` | `str` | Block modulation type: `"residual"` (default), `"affine"`, `"scale_only"`, `"shift_only"` |
-| `config.mod_block_fraction` | `float` | Fraction of transformer blocks that receive preference modulation (0.0–1.0, default: 1.0) |
-| `config.num_freqs` | `int` | Number of sinusoidal frequency bands in `SliderProjector` PE (default: 1) |
-| `config.beta` | `float` | Outer beta controlling decay schedule |
-| `config.train.beta` | `float` | KL penalty coefficient in NFT loss |
-| `config.train.lora_rank` | `int` | LoRA rank (default: 32 in presets) |
-| `config.sample.num_steps` | `int` | Denoising steps during training sampling (5–25 typical) |
-| `config.sample.num_image_per_prompt` | `int` | Images per prompt per batch (24 in presets) |
+
+| Field                                | Type    | Description                                                                                             |
+| ------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------- |
+| `config.loss_mode`                   | `str`   | `"per_objective"` (recommended) or `"single_loss"`                                                      |
+| `config.num_pref_per_prompt`         | `int`   | K distinct preference slots per prompt per batch (default: 1; use 3 for Pareto training)                |
+| `config.reward_fn`                   | `dict`  | Maps reward function names to weights, e.g. `{"pickscore_photorealism": 1.0, "qwen_style_sketch": 1.0}` |
+| `config.block_mod_form`              | `str`   | Block modulation type: `"residual"` (default), `"affine"`, `"scale_only"`, `"shift_only"`               |
+| `config.mod_block_fraction`          | `float` | Fraction of transformer blocks that receive preference modulation (0.0–1.0, default: 1.0)               |
+| `config.num_freqs`                   | `int`   | Number of sinusoidal frequency bands in `SliderProjector` PE (default: 1)                               |
+| `config.beta`                        | `float` | Outer beta controlling decay schedule                                                                   |
+| `config.train.beta`                  | `float` | KL penalty coefficient in NFT loss                                                                      |
+| `config.train.lora_rank`             | `int`   | LoRA rank (default: 32 in presets)                                                                      |
+| `config.sample.num_steps`            | `int`   | Denoising steps during training sampling (5–25 typical)                                                 |
+| `config.sample.num_image_per_prompt` | `int`   | Images per prompt per batch (24 in presets)                                                             |
+
 
 ### Monitoring
 
@@ -184,15 +193,17 @@ python scripts/eval_preference.py \
 
 Key `eval_preference.py` options:
 
-| Flag | Description |
-|------|-------------|
-| `--weight_mode` | `sweep` (linear interpolation), `corners` (one-hot extremes), `simplex_grid` (uniform grid) |
-| `--num_weights` | Number of weight points to evaluate |
-| `--num_seeds` | Number of random seeds per weight |
-| `--compute_scores` | Also score images with reward functions |
-| `--plot` | Generate Pareto front plots |
-| `--custom_weights` | Comma-separated custom weight values |
-| `--baseline_checkpoint_path` | Compare against a non-conditioned baseline |
+
+| Flag                         | Description                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------- |
+| `--weight_mode`              | `sweep` (linear interpolation), `corners` (one-hot extremes), `simplex_grid` (uniform grid) |
+| `--num_weights`              | Number of weight points to evaluate                                                         |
+| `--num_seeds`                | Number of random seeds per weight                                                           |
+| `--compute_scores`           | Also score images with reward functions                                                     |
+| `--plot`                     | Generate Pareto front plots                                                                 |
+| `--custom_weights`           | Comma-separated custom weight values                                                        |
+| `--baseline_checkpoint_path` | Compare against a non-conditioned baseline                                                  |
+
 
 ### Distributed Conditional Evaluation
 
@@ -215,12 +226,14 @@ Checkpoint `metadata.json` (saved during training) is auto-detected and override
 
 Prompt datasets are bundled under `T2I/dataset/`. Each dataset contains text prompts (one per line for `.txt`, one JSON object per line for `.jsonl`):
 
-| Dataset | Format | Use Case |
-|---------|--------|----------|
-| `pickscore` | `train.txt` / `test.txt` | General text-to-image prompts |
-| `drawbench` | `train.txt` / `test.txt` | DrawBench evaluation prompts |
-| `ocr` | `train.txt` / `test.txt` | OCR-focused prompts |
-| `geneval` | `train_metadata.jsonl` / `test_metadata.jsonl` | GenEval with structured metadata |
+
+| Dataset     | Format                                         | Use Case                         |
+| ----------- | ---------------------------------------------- | -------------------------------- |
+| `pickscore` | `train.txt` / `test.txt`                       | General text-to-image prompts    |
+| `drawbench` | `train.txt` / `test.txt`                       | DrawBench evaluation prompts     |
+| `ocr`       | `train.txt` / `test.txt`                       | OCR-focused prompts              |
+| `geneval`   | `train_metadata.jsonl` / `test_metadata.jsonl` | GenEval with structured metadata |
+
 
 ## Checkpoints
 
@@ -246,3 +259,4 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 ```
 NVIDIA CORPORATION & AFFILIATES
 ```
+
