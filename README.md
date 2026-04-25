@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="assets/logo.png" alt="ParetoSlider" width="600">
-</p>
+<h1 align="center">ParetoSlider</h1>
 
 <h3 align="center">Preference-Conditioned Pareto-Set Learning for Multi-Objective Text-to-Image Generation</h3>
 
