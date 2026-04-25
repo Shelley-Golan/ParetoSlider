@@ -17,7 +17,7 @@ ParetoSlider/
 │   │   └── conditional_evaluation.py     # Distributed evaluation with preference grid
 │   ├── flow_grpo/                        # Core library
 │   │   ├── rewards.py                    # Reward functions & multi_score_conditioned
-│   │   ├── stat_tracking.py              # Per-prompt-and-preference stat tracker (GDPO)
+│   │   ├── stat_tracking.py              # Per-prompt-and-preference stat tracker
 │   │   ├── scalarization.py              # Loss scalarization (linear)
 │   │   ├── ema.py                        # EMA for trainable parameters
 │   │   ├── pickscore_scorer.py           # PickScore reward scorer
@@ -74,7 +74,7 @@ The following HuggingFace models are downloaded automatically:
 
 1. **Sample images** from the current model, each conditioned on a random **preference vector** drawn from the objective simplex (e.g., `[0.7, 0.3]` for 70% photorealism, 30% sketch).
 2. **Score** each image independently on every objective using `multi_score_conditioned`.
-3. **Normalize** advantages within (prompt, preference-slot) subgroups via `PerPromptAndPreferenceStatTracker` (GDPO-style).
+3. **Normalize** advantages within (prompt, preference-slot) subgroups via `PerPromptAndPreferenceStatTracker` (late scalarization).
 4. **Update** the model with per-objective NFT losses, scalarized by the preference vector.
 
 The preference vector is injected into the SD3 transformer via two learnable conditioning paths (temb + shared block modulation), while the base model weights stay frozen under LoRA.
@@ -256,7 +256,12 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 
 ## Citation
 
-```
-NVIDIA CORPORATION & AFFILIATES
+```bibtex
+@article{golan2025paretoSlider,
+  title={{ParetoSlider}: Diffusion Models Post-Training for Continuous Reward Control},
+  author={Golan, Shelly and Finkelson, Michael and Bereslavsky, Ariel and Nitzan, Yotam and Patashnik, Or},
+  journal={arXiv preprint arXiv:2604.20816},
+  year={2025}
+}
 ```
 

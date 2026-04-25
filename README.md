@@ -14,7 +14,7 @@ ParetoSlider trains a **single diffusion model** that learns an entire **Pareto 
 
 - **Multi-objective reward training** — The model is fine-tuned online with multiple reward signals (e.g., PickScore for photorealism, Qwen-VL for sketch style) rather than collapsing them into a single scalar.
 - **Preference-conditioned generation** — A preference vector on the objective simplex (e.g., `[0.7, 0.3]`) is injected into the SD3 transformer via learned temb injection and shared block modulation, giving continuous control over the output style.
-- **GDPO-style normalization** — Advantages are normalized within (prompt, preference) subgroups, so the model trains stably across different regions of the Pareto front.
+- **Late scalarization** — Advantages are normalized within (prompt, preference) subgroups, so the model trains stably across different regions of the Pareto front.
 - **Efficient LoRA fine-tuning** — Only LoRA adapters and lightweight preference modules are trained; the base SD3 weights stay frozen.
 
 ## Architecture
@@ -76,6 +76,11 @@ Apache License 2.0 — see [T2I/LICENSE](T2I/LICENSE).
 
 ## Citation
 
-```
-NVIDIA CORPORATION & AFFILIATES
+```bibtex
+@article{golan2025paretoSlider,
+  title={{ParetoSlider}: Diffusion Models Post-Training for Continuous Reward Control},
+  author={Golan, Shelly and Finkelson, Michael and Bereslavsky, Ariel and Nitzan, Yotam and Patashnik, Or},
+  journal={arXiv preprint arXiv:2604.20816},
+  year={2025}
+}
 ```
